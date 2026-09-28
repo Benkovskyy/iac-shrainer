@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Параметры варианта 06 — Шрайнер
+PREFIX="shrainer-06"
+ZONE_A="ru-central1-d"
+ZONE_B="ru-central1-a"
+CIDR_A="10.16.1.0/24"
+CIDR_B="10.16.2.0/24"
+APP_PORT="8018"
+GREETING="netlab"
+VM_COUNT="3"
+BOOT_SIZE="25"
+DISK_SIZE="15"
+
+NETWORK_NAME="${PREFIX}-net"
+SUBNET_A="${PREFIX}-subnet-a"
+SUBNET_B="${PREFIX}-subnet-b"
+DATA_DISK="${PREFIX}-data"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLOUD_INIT_TEMPLATE="${SCRIPT_DIR}/cloud-init.tpl.yaml"
+CLOUD_INIT_FILE="${SCRIPT_DIR}/cloud-init.yaml"
+SSH_KEY_FILE="${HOME}/.ssh/id_ed25519.pub"
+
+echo "=== Параметры стенда ${PREFIX} ==="
+echo "ZONE_A=${ZONE_A}"
+echo "ZONE_B=${ZONE_B}"
+echo "CIDR_A=${CIDR_A}"
+echo "CIDR_B=${CIDR_B}"
+echo "APP_PORT=${APP_PORT}"
+echo "GREETING=${GREETING}"
+echo "VM_COUNT=${VM_COUNT}"
+echo "BOOT_SIZE=${BOOT_SIZE}"
+echo "DISK_SIZE=${DISK_SIZE}"
+
+SSH_KEY="$(cat "${SSH_KEY_FILE}")"
+
+sed \
+  -e "s|__SSH_KEY__|${SSH_KEY}|g" \
+  -e "s|__PORT__|${APP_PORT}|g" \
+  -e "s|__GREETING__|${GREETING}|g" \
+  "${CLOUD_INIT_TEMPLATE}" > "${CLOUD_INIT_FILE}"
+
+echo "cloud-init.yaml сгенерирован"
+
+yc vpc network create \
+  --name "${NETWORK_NAME}"
+
+yc vpc subnet create \
+  --name "${SUBNET_A}" \
+  --network-name "${NETWORK_NAME}" \
+  --zone "${ZONE_A}" \
+  --range "${CIDR_A}"
+
+yc vpc subnet create \
+  --name "${SUBNET_B}" \
+  --network-name "${NETWORK_NAME}" \
+  --zone "${ZONE_B}" \
+  --range "${CIDR_B}"
+
+for i in $(seq 1 "${VM_COUNT}"); do
+  VM_NAME="${PREFIX}-app-${i}"
+
+  if (( i % 2 == 1 )); then
+    VM_ZONE="${ZONE_A}"
+    VM_SUBNET="${SUBNET_A}"
+  else
+    VM_ZONE="${ZONE_B}"
+    VM_SUBNET="${SUBNET_B}"
+  fi
+
+  echo "Создание ${VM_NAME} в ${VM_ZONE}"
+
+  yc compute instance create \
+    --name "${VM_NAME}" \
+    --zone "${VM_ZONE}" \
+    --platform standard-v3 \
+    --cores=2 \
+    --core-fraction=20 \
+    --memory=2 \
+    --preemptible \
+    --create-boot-disk image-folder-id=standard-images,image-family=ubuntu-2404-lts,type=network-hdd,size="${BOOT_SIZE}" \
+    --network-interface subnet-name="${VM_SUBNET}",nat-ip-version=ipv4 \
+    --hostname "${VM_NAME}" \
+    --metadata-from-file user-data="${CLOUD_INIT_FILE}"
+done
+
+yc compute disk create \
+  --name "${DATA_DISK}" \
+  --zone "${ZONE_A}" \
+  --type network-hdd \
+  --size "${DISK_SIZE}"
+
+echo "=== Стенд ${PREFIX} создан ==="
+yc compute instance list
+yc compute disk list
