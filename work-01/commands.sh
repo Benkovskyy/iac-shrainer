@@ -15,6 +15,19 @@ yc vpc subnet create \
   --range "$CIDR"
 
 yc compute instance create \
+  --name "$PREFIX-web-cli" \
+  --zone "$ZONE" \
+  --platform standard-v3 \
+  --cores=2 \
+  --core-fraction=20 \
+  --memory=2 \
+  --preemptible \
+  --create-boot-disk image-folder-id=standard-images,image-family="$IMAGE_FAMILY",type=network-hdd,size="$DISK_SIZE" \
+  --network-interface subnet-name="$PREFIX-subnet",nat-ip-version=ipv4 \
+  --ssh-key "$SSH_KEY" \
+  --labels created-by=cli
+
+yc compute instance create \
   --name "$PREFIX-app-1" \
   --zone "$ZONE" \
   --platform standard-v3 \
@@ -42,5 +55,7 @@ yc compute instance create \
 
 yc compute instance delete "$PREFIX-app-1"
 yc compute instance delete "$PREFIX-app-2"
+yc compute instance delete "$PREFIX-web-cli"
+
 yc vpc subnet delete "$PREFIX-subnet"
 yc vpc network delete "$PREFIX-net"
