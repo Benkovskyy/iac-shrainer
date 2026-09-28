@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+ZONE_B="ru-central1-a"#!/usr/bin/env bash
 set -euo pipefail
 
 # Параметры варианта 06 — Шрайнер
 PREFIX="shrainer-06"
 ZONE_A="ru-central1-d"
-ZONE_B="ru-central1-a"
+ZONE_B="ru-central1-b"
 CIDR_A="10.16.1.0/24"
 CIDR_B="10.16.2.0/24"
 APP_PORT="8018"
