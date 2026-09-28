@@ -1,17 +1,23 @@
-ZONE_B="ru-central1-a"#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Параметры варианта 06 — Шрайнер
+# ---- параметры варианта 06 — Шрайнер ----
 PREFIX="shrainer-06"
 ZONE_A="ru-central1-d"
+
+# По варианту исходно ru-central1-a.
+# Временно используется ru-central1-b из-за проблемы
+# внешней доступности публичных IP в ru-central1-a.
 ZONE_B="ru-central1-b"
+
 CIDR_A="10.16.1.0/24"
 CIDR_B="10.16.2.0/24"
 APP_PORT="8018"
 GREETING="netlab"
 VM_COUNT="3"
-BOOT_SIZE="25"
 DISK_SIZE="15"
+BOOT_SIZE="25"
+IMAGE_FAMILY="ubuntu-2404-lts"
 
 NETWORK_NAME="${PREFIX}-net"
 SUBNET_A="${PREFIX}-subnet-a"
@@ -34,6 +40,7 @@ echo "VM_COUNT=${VM_COUNT}"
 echo "BOOT_SIZE=${BOOT_SIZE}"
 echo "DISK_SIZE=${DISK_SIZE}"
 
+# ---- генерация cloud-init из шаблона ----
 SSH_KEY="$(cat "${SSH_KEY_FILE}")"
 
 sed \
@@ -42,7 +49,10 @@ sed \
   -e "s|__GREETING__|${GREETING}|g" \
   "${CLOUD_INIT_TEMPLATE}" > "${CLOUD_INIT_FILE}"
 
-echo "cloud-init.yaml сгенерирован"
+echo "==> cloud-init.yaml сгенерирован"
+
+# ---- сеть и две подсети ----
+echo "==> сеть и подсети"
 
 yc vpc network create \
   --name "${NETWORK_NAME}"
@@ -58,6 +68,9 @@ yc vpc subnet create \
   --network-name "${NETWORK_NAME}" \
   --zone "${ZONE_B}" \
   --range "${CIDR_B}"
+
+# ---- виртуальные машины ----
+echo "==> машины"
 
 for i in $(seq 1 "${VM_COUNT}"); do
   VM_NAME="${PREFIX}-app-${i}"
@@ -80,11 +93,14 @@ for i in $(seq 1 "${VM_COUNT}"); do
     --core-fraction=20 \
     --memory=2 \
     --preemptible \
-    --create-boot-disk image-folder-id=standard-images,image-family=ubuntu-2404-lts,type=network-hdd,size="${BOOT_SIZE}" \
+    --create-boot-disk image-folder-id=standard-images,image-family="${IMAGE_FAMILY}",type=network-hdd,size="${BOOT_SIZE}" \
     --network-interface subnet-name="${VM_SUBNET}",nat-ip-version=ipv4 \
     --hostname "${VM_NAME}" \
     --metadata-from-file user-data="${CLOUD_INIT_FILE}"
 done
+
+# ---- дополнительный диск ----
+echo "==> дополнительный диск"
 
 yc compute disk create \
   --name "${DATA_DISK}" \
@@ -92,6 +108,12 @@ yc compute disk create \
   --type network-hdd \
   --size "${DISK_SIZE}"
 
+yc compute instance attach-disk "${PREFIX}-app-1" \
+  --disk-name "${DATA_DISK}" \
+  --device-name data \
+  --auto-delete=false
+
 echo "=== Стенд ${PREFIX} создан ==="
+
 yc compute instance list
 yc compute disk list
