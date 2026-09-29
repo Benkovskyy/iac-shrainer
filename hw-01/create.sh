@@ -122,3 +122,54 @@ else
         --network-name "$NETWORK_NAME" \
         --range "$CIDR_B"
 fi
+
+
+# ==========================================
+# Создание NAT-шлюза
+# ==========================================
+
+NAT_NAME="${PREFIX}-nat"
+ROUTE_TABLE_NAME="${PREFIX}-rt"
+
+echo
+echo "Проверяю NAT-шлюз $NAT_NAME..."
+
+if yc vpc gateway get "$NAT_NAME" >/dev/null 2>&1; then
+    echo "NAT-шлюз $NAT_NAME уже существует, пропускаю."
+else
+    echo "Создаю NAT-шлюз $NAT_NAME..."
+    yc vpc gateway create --name "$NAT_NAME"
+fi
+
+GW_ID=$(yc vpc gateway get --name "$NAT_NAME" --format json | jq -r '.id')
+
+# ==========================================
+# Создание таблицы маршрутизации
+# ==========================================
+
+echo
+echo "Проверяю таблицу маршрутизации $ROUTE_TABLE_NAME..."
+
+if yc vpc route-table get "$ROUTE_TABLE_NAME" >/dev/null 2>&1; then
+    echo "Таблица маршрутизации $ROUTE_TABLE_NAME уже существует, пропускаю."
+else
+    echo "Создаю таблицу маршрутизации $ROUTE_TABLE_NAME..."
+    yc vpc route-table create \
+        --name "$ROUTE_TABLE_NAME" \
+        --network-name "$NETWORK_NAME" \
+        --route "destination=0.0.0.0/0,gateway-id=$GW_ID"
+fi
+
+# ==========================================
+# Подключение таблицы маршрутизации к подсети A
+# ==========================================
+
+echo
+echo "Подключаю таблицу маршрутизации к $SUBNET_A_NAME..."
+
+yc vpc subnet update \
+    --name "$SUBNET_A_NAME" \
+    --route-table-name "$ROUTE_TABLE_NAME" \
+    >/dev/null
+
+echo "Таблица маршрутизации подключена к $SUBNET_A_NAME."
