@@ -94,3 +94,22 @@ else
 fi
 
 echo "=== Стенд ${PREFIX} удалён ==="
+
+
+echo "=== ВМ ==="
+yc compute instance list
+
+echo "=== ДИСКИ ==="
+yc compute disk list
+
+echo "=== БАЛАНСИРОВЩИКИ ==="
+yc load-balancer network-load-balancer list
+
+echo "=== ЦЕЛЕВЫЕ ГРУППЫ ==="
+yc load-balancer target-group list
+
+echo "=== ПОДСЕТИ ==="
+yc vpc subnet list
+
+echo "=== СЕТИ ==="
+yc vpc network list
