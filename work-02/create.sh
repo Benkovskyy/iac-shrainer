@@ -42,12 +42,11 @@ echo "DISK_SIZE=${DISK_SIZE}"
 
 # ---- генерация cloud-init из шаблона ----
 SSH_KEY="$(cat "${SSH_KEY_FILE}")"
+export SSH_KEY APP_PORT GREETING
 
-sed \
-  -e "s|__SSH_KEY__|${SSH_KEY}|g" \
-  -e "s|__PORT__|${APP_PORT}|g" \
-  -e "s|__GREETING__|${GREETING}|g" \
-  "${CLOUD_INIT_TEMPLATE}" > "${CLOUD_INIT_FILE}"
+envsubst '${SSH_KEY} ${APP_PORT} ${GREETING}' \
+  < "${CLOUD_INIT_TEMPLATE}" \
+  > "${CLOUD_INIT_FILE}"
 
 echo "==> cloud-init.yaml сгенерирован"
 
@@ -137,6 +136,7 @@ done
 yc load-balancer target-group create \
   --name "${PREFIX}-tg" \
   ${TARGETS}
+
 # ---- балансировщик ----
 echo "==> балансировщик"
 
