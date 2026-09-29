@@ -86,3 +86,39 @@ else
     echo "Создаю сеть $NETWORK_NAME..."
     yc vpc network create --name "$NETWORK_NAME"
 fi
+
+
+# ==========================================
+# Создание подсетей
+# ==========================================
+
+SUBNET_A_NAME="${PREFIX}-subnet-a"
+SUBNET_B_NAME="${PREFIX}-subnet-b"
+
+echo
+echo "Проверяю подсеть $SUBNET_A_NAME..."
+
+if yc vpc subnet get "$SUBNET_A_NAME" >/dev/null 2>&1; then
+    echo "Подсеть $SUBNET_A_NAME уже существует, пропускаю."
+else
+    echo "Создаю подсеть $SUBNET_A_NAME..."
+    yc vpc subnet create \
+        --name "$SUBNET_A_NAME" \
+        --zone "$ZONE_A" \
+        --network-name "$NETWORK_NAME" \
+        --range "$CIDR_A"
+fi
+
+echo
+echo "Проверяю подсеть $SUBNET_B_NAME..."
+
+if yc vpc subnet get "$SUBNET_B_NAME" >/dev/null 2>&1; then
+    echo "Подсеть $SUBNET_B_NAME уже существует, пропускаю."
+else
+    echo "Создаю подсеть $SUBNET_B_NAME..."
+    yc vpc subnet create \
+        --name "$SUBNET_B_NAME" \
+        --zone "$ZONE_B" \
+        --network-name "$NETWORK_NAME" \
+        --range "$CIDR_B"
+fi
