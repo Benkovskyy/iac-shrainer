@@ -17,5 +17,9 @@ runcmd:
   - sed -i 's/listen 80 default_server;/listen __PORT__ default_server;/' /etc/nginx/sites-available/default
   - sed -i 's/listen \[::\]:80 default_server;/listen [::]:__PORT__ default_server;/' /etc/nginx/sites-available/default
   - bash -c 'echo "__GREETING__ on $(hostname)" > /var/www/html/index.nginx-debian.html'
+  - 'if [ -b /dev/disk/by-id/virtio-data ]; then mkfs.ext4 -F /dev/disk/by-id/virtio-data; fi'
+  - 'if [ -b /dev/disk/by-id/virtio-data ]; then mkdir -p /mnt/data; fi'
+  - 'if [ -b /dev/disk/by-id/virtio-data ]; then echo "/dev/disk/by-id/virtio-data /mnt/data ext4 defaults,nofail 0 2" >> /etc/fstab; fi'
+  - 'if [ -b /dev/disk/by-id/virtio-data ]; then mount /mnt/data; fi'
   - nginx -t
   - systemctl restart nginx
