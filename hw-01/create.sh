@@ -69,3 +69,20 @@ echo "Слово:         $WORD"
 echo "Web-серверов:  $WEB_COUNT"
 echo "Окружение:     $ENV_NAME"
 echo "=========================================="
+
+
+# ==========================================
+# Создание сети
+# ==========================================
+
+NETWORK_NAME="${PREFIX}-net"
+
+echo
+echo "Проверяю сеть $NETWORK_NAME..."
+
+if yc vpc network get "$NETWORK_NAME" >/dev/null 2>&1; then
+    echo "Сеть $NETWORK_NAME уже существует, пропускаю."
+else
+    echo "Создаю сеть $NETWORK_NAME..."
+    yc vpc network create --name "$NETWORK_NAME"
+fi
