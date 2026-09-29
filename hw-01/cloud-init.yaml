@@ -1,0 +1,41 @@
+#cloud-config
+
+package_update: true
+
+packages:
+  - nginx
+
+write_files:
+  - path: /etc/nginx/sites-available/default
+    permissions: '0644'
+    content: |
+      server {
+          listen ${PORT} default_server;
+          listen [::]:${PORT} default_server;
+
+          root /var/www/html;
+          index index.html;
+
+          location / {
+              try_files $uri $uri/ =404;
+          }
+      }
+
+  - path: /var/www/html/index.html
+    permissions: '0644'
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="UTF-8">
+          <title>${WORD}</title>
+      </head>
+      <body>
+          <h1>${WORD}</h1>
+          <p>Server: ${SERVER_NAME}</p>
+      </body>
+      </html>
+
+runcmd:
+  - systemctl enable nginx
+  - systemctl restart nginx
