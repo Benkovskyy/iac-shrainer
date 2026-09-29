@@ -69,6 +69,15 @@ yc vpc subnet create \
   --zone "${ZONE_B}" \
   --range "${CIDR_B}"
 
+# ---- дополнительный диск ----
+echo "==> дополнительный диск"
+
+yc compute disk create \
+  --name "${DATA_DISK}" \
+  --zone "${ZONE_A}" \
+  --type network-hdd \
+  --size "${DISK_SIZE}"
+
 # ---- виртуальные машины ----
 echo "==> машины"
 
@@ -85,6 +94,15 @@ for i in $(seq 1 "${VM_COUNT}"); do
 
   echo "Создание ${VM_NAME} в ${VM_ZONE}"
 
+  EXTRA_DISK_ARGS=()
+
+  if (( i == 1 )); then
+    EXTRA_DISK_ARGS=(
+      --attach-disk
+      "disk-name=${DATA_DISK},device-name=data,auto-delete=false"
+    )
+  fi
+
   yc compute instance create \
     --name "${VM_NAME}" \
     --zone "${VM_ZONE}" \
@@ -95,29 +113,10 @@ for i in $(seq 1 "${VM_COUNT}"); do
     --preemptible \
     --create-boot-disk image-folder-id=standard-images,image-family="${IMAGE_FAMILY}",type=network-hdd,size="${BOOT_SIZE}" \
     --network-interface subnet-name="${VM_SUBNET}",nat-ip-version=ipv4 \
+    "${EXTRA_DISK_ARGS[@]}" \
     --hostname "${VM_NAME}" \
     --metadata-from-file user-data="${CLOUD_INIT_FILE}"
 done
-
-# ---- дополнительный диск ----
-echo "==> дополнительный диск"
-
-yc compute disk create \
-  --name "${DATA_DISK}" \
-  --zone "${ZONE_A}" \
-  --type network-hdd \
-  --size "${DISK_SIZE}"
-
-yc compute instance attach-disk "${PREFIX}-app-1" \
-  --disk-name "${DATA_DISK}" \
-  --device-name data \
-  --auto-delete=false
-
-echo "=== Стенд ${PREFIX} создан ==="
-
-yc compute instance list
-yc compute disk list
-
 
 # ---- целевая группа ----
 echo "==> целевая группа"
