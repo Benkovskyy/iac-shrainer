@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+set -euo pipefail
 
 PREFIX="shrainer-06"
 VM_COUNT="${1:-3}"
@@ -94,7 +94,6 @@ else
 fi
 
 echo "=== Стенд ${PREFIX} удалён ==="
-
 
 echo "=== ВМ ==="
 yc compute instance list
