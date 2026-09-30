@@ -335,6 +335,64 @@ done
 # ==========================================
 # Очистка временного cloud-init
 # ==========================================
+# Target group и балансировщик
+# ==========================================
+
+TG_NAME="${PREFIX}-tg"
+LB_NAME="${PREFIX}-lb"
+
+echo
+echo "Создаю target group $TG_NAME..."
+
+TG_EXISTS=$(
+    yc load-balancer target-group list --format json |
+    jq -r --arg NAME "$TG_NAME" '.[] | select(.name == $NAME) | .id' |
+    head -n 1
+)
+
+if [[ -z "$TG_EXISTS" ]]; then
+    TARGET_ARGS=()
+
+    for ((i=1; i<=WEB_COUNT; i++)); do
+        VM_NAME="${PREFIX}-web-${i}"
+        VM_INFO=$(yc compute instance get "$VM_NAME" --format json)
+        VM_IP=$(echo "$VM_INFO" | jq -r '.network_interfaces[0].primary_v4_address.address')
+        SUBNET_ID=$(echo "$VM_INFO" | jq -r '.network_interfaces[0].subnet_id')
+
+        TARGET_ARGS+=(--target "subnet-id=${SUBNET_ID},address=${VM_IP}")
+    done
+
+    yc load-balancer target-group create \
+        --name "$TG_NAME" \
+        "${TARGET_ARGS[@]}"
+else
+    echo "Target group $TG_NAME уже существует, пропускаю."
+fi
+
+echo
+echo "Создаю сетевой балансировщик $LB_NAME..."
+
+LB_EXISTS=$(
+    yc load-balancer network-load-balancer list --format json |
+    jq -r --arg NAME "$LB_NAME" '.[] | select(.name == $NAME) | .id' |
+    head -n 1
+)
+
+if [[ -z "$LB_EXISTS" ]]; then
+    yc load-balancer network-load-balancer create \
+        --name "$LB_NAME" \
+        --listener "name=${PREFIX}-listener,port=${PORT},target-port=${PORT},external-ip-version=ipv4"
+
+    yc load-balancer network-load-balancer attach-target-group "$LB_NAME" \
+        --target-group "$TG_NAME" \
+        --health-check "name=${PREFIX}-healthcheck,http,port=${PORT},path=/"
+else
+    echo "Балансировщик $LB_NAME уже существует, пропускаю."
+fi
+
+echo "Балансировщик настроен."
+
+# ==========================================
 
 rm -f "$CLOUD_INIT_FILE"
 
