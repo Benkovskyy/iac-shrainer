@@ -12,11 +12,11 @@ ENV_NAME="${ENV_NAME:-dev}"
 
 echo "=========================================="
 echo "Удаление стенда"
-echo "Метка owner: $PREFIX"
+echo "Метки: owner=$PREFIX, env=$ENV_NAME"
 echo "=========================================="
 
 # Возвращает ID ресурсов, созданных этим стендом.
-# Поиск выполняется по метке owner, а не по имени.
+# Поиск выполняется по меткам owner и env, а не по имени.
 find_by_owner() {
     "$@" --format json |
         jq -r --arg OWNER "$PREFIX" --arg ENV_LABEL "$ENV_NAME" \
