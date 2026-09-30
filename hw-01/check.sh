@@ -60,10 +60,10 @@ SERVERS=$(
 
 SERVER_COUNT=$(printf '%s\n' "$SERVERS" | sed '/^$/d' | wc -l)
 
-if (( SERVER_COUNT > 1 )); then
+if (( SERVER_COUNT == WEB_COUNT )); then
     echo "✓ ответили машины: $(echo "$SERVERS" | paste -sd ', ' -)"
 else
-    echo "✗ ответило машин: $SERVER_COUNT"
+    echo "✗ ответили машины: ${SERVER_COUNT} из ${WEB_COUNT}"
     RESULT=1
 fi
 
