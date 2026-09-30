@@ -400,12 +400,12 @@ LB_EXISTS=$(
 if [[ -z "$LB_EXISTS" ]]; then
     yc load-balancer network-load-balancer create \
         --name "$LB_NAME" \
-        --listener "name=${PREFIX}-listener,port=${PORT},target-port=${PORT},external-ip-version=ipv4"
+        --listener "name=${PREFIX}-listener,port=80,target-port=${PORT},external-ip-version=ipv4"
 
     TG_ID=$(yc load-balancer target-group get "$TG_NAME" --format json | jq -r '.id')
 
     yc load-balancer network-load-balancer attach-target-group "$LB_NAME" \
-        --target-group "target-group-id=${TG_ID},healthcheck-name=${PREFIX}-healthcheck,healthcheck-tcp-port=${PORT}"
+        --target-group "target-group-id=${TG_ID},healthcheck-name=${PREFIX}-healthcheck,healthcheck-http-port=${PORT},healthcheck-http-path=/"
 else
     echo "Балансировщик $LB_NAME уже существует, пропускаю."
 fi
