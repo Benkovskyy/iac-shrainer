@@ -1,5 +1,13 @@
 #cloud-config
 
+users:
+  - name: shrainer
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - __SSH_KEY__
+
 package_update: true
 
 packages:
@@ -10,8 +18,8 @@ write_files:
     permissions: '0644'
     content: |
       server {
-          listen ${PORT} default_server;
-          listen [::]:${PORT} default_server;
+          listen __PORT__ default_server;
+          listen [::]:__PORT__ default_server;
 
           root /var/www/html;
           index index.html;
@@ -28,11 +36,11 @@ write_files:
       <html>
       <head>
           <meta charset="UTF-8">
-          <title>${WORD}</title>
+          <title>__WORD__</title>
       </head>
       <body>
-          <h1>${WORD}</h1>
-          <p>Server: ${SERVER_NAME}</p>
+          <h1>__WORD__</h1>
+          <p>Server: __SERVER_NAME__</p>
       </body>
       </html>
 
