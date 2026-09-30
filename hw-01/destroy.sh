@@ -8,42 +8,41 @@ set -euo pipefail
 # ==========================================
 
 PREFIX="${PREFIX:-shrainer}"
-WEB_COUNT="${WEB_COUNT:-3}"
-
-ZONE_A="${ZONE_A:-ru-central1-d}"
-ZONE_B="${ZONE_B:-ru-central1-b}"
-
-NETWORK_NAME="${PREFIX}-net"
-SUBNET_A_NAME="${PREFIX}-subnet-a"
-SUBNET_B_NAME="${PREFIX}-subnet-b"
-ROUTE_TABLE_NAME="${PREFIX}-rt"
-NAT_NAME="${PREFIX}-nat"
-TG_NAME="${PREFIX}-tg"
-LB_NAME="${PREFIX}-lb"
+ENV_NAME="${ENV_NAME:-dev}"
 
 echo "=========================================="
 echo "Удаление стенда"
-echo "Префикс: $PREFIX"
+echo "Метка owner: $PREFIX"
 echo "=========================================="
 
+# Возвращает ID ресурсов, созданных этим стендом.
+# Поиск выполняется по метке owner, а не по имени.
+find_by_owner() {
+    local command="$1"
+
+    eval "$command --format json" |
+        jq -r --arg OWNER "$PREFIX" --arg ENV "$ENV_NAME" \
+        '.[] | select(.labels.owner == $OWNER and .labels.env == $ENV) | .id'
+}
+
 # ==========================================
-# Удаление балансировщика
+# Удаление балансировщиков
 # ==========================================
 
 echo
-echo "Проверяю балансировщик $LB_NAME..."
+echo "Ищу балансировщики с owner=$PREFIX..."
 
-LB_ID=$(
-    yc load-balancer network-load-balancer list --format json |
-    jq -r --arg NAME "$LB_NAME" '.[] | select(.name == $NAME) | .id' |
-    head -n 1
+mapfile -t LB_IDS < <(
+    find_by_owner "yc load-balancer network-load-balancer list"
 )
 
-if [[ -n "$LB_ID" ]]; then
-    echo "Удаляю балансировщик $LB_NAME..."
-    yc load-balancer network-load-balancer delete --id "$LB_ID"
+if (( ${#LB_IDS[@]} == 0 )); then
+    echo "Балансировщики отсутствуют, пропускаю."
 else
-    echo "Балансировщик $LB_NAME отсутствует, пропускаю."
+    for ID in "${LB_IDS[@]}"; do
+        echo "Удаляю балансировщик $ID..."
+        yc load-balancer network-load-balancer delete --id "$ID"
+    done
 fi
 
 # ==========================================
@@ -51,168 +50,142 @@ fi
 # ==========================================
 
 echo
-echo "Проверяю target group $TG_NAME..."
+echo "Ищу target group с owner=$PREFIX..."
 
-TG_ID=$(
-    yc load-balancer target-group list --format json |
-    jq -r --arg NAME "$TG_NAME" '.[] | select(.name == $NAME) | .id' |
-    head -n 1
+mapfile -t TG_IDS < <(
+    find_by_owner "yc load-balancer target-group list"
 )
 
-if [[ -n "$TG_ID" ]]; then
-    echo "Удаляю target group $TG_NAME..."
-    yc load-balancer target-group delete --id "$TG_ID"
+if (( ${#TG_IDS[@]} == 0 )); then
+    echo "Target group отсутствуют, пропускаю."
 else
-    echo "Target group $TG_NAME отсутствует, пропускаю."
+    for ID in "${TG_IDS[@]}"; do
+        echo "Удаляю target group $ID..."
+        yc load-balancer target-group delete --id "$ID"
+    done
 fi
 
 # ==========================================
 # Удаление виртуальных машин
 # ==========================================
 
-for ((i=1; i<=WEB_COUNT; i++)); do
-
-    VM_NAME="${PREFIX}-web-${i}"
-
-    echo
-    echo "Проверяю ВМ $VM_NAME..."
-
-    VM_ID=$(
-        yc compute instance list --format json |
-        jq -r --arg NAME "$VM_NAME" \
-        '.[] | select(.name == $NAME) | .id' |
-        head -n 1
-    )
-
-    if [[ -n "$VM_ID" ]]; then
-        echo "Удаляю ВМ $VM_NAME..."
-        yc compute instance delete \
-            --id "$VM_ID"
-    else
-        echo "ВМ $VM_NAME отсутствует, пропускаю."
-    fi
-
-done
-
-# ==========================================
-# Удаление сервера приложения
-# ==========================================
-
-APP_NAME="${PREFIX}-app"
-
 echo
-echo "Проверяю ВМ $APP_NAME..."
+echo "Ищу ВМ с owner=$PREFIX..."
 
-APP_ID=$(
-    yc compute instance list --format json |
-    jq -r --arg NAME "$APP_NAME"     '.[] | select(.name == $NAME) | .id' |
-    head -n 1
+mapfile -t VM_IDS < <(
+    find_by_owner "yc compute instance list"
 )
 
-if [[ -n "$APP_ID" ]]; then
-    echo "Удаляю ВМ $APP_NAME..."
-    yc compute instance delete         --id "$APP_ID"
+if (( ${#VM_IDS[@]} == 0 )); then
+    echo "ВМ отсутствуют, пропускаю."
 else
-    echo "ВМ $APP_NAME отсутствует, пропускаю."
+    for ID in "${VM_IDS[@]}"; do
+        echo "Удаляю ВМ $ID..."
+        yc compute instance delete --id "$ID"
+    done
 fi
 
 # ==========================================
 # Удаление дополнительных дисков
 # ==========================================
 
-for ((i=1; i<=WEB_COUNT; i++)); do
+echo
+echo "Ищу дополнительные диски с owner=$PREFIX..."
 
-    DISK_NAME="${PREFIX}-data-${i}"
+mapfile -t DISK_IDS < <(
+    find_by_owner "yc compute disk list"
+)
 
-    echo
-    echo "Проверяю диск $DISK_NAME..."
+if (( ${#DISK_IDS[@]} == 0 )); then
+    echo "Дополнительные диски отсутствуют, пропускаю."
+else
+    for ID in "${DISK_IDS[@]}"; do
+        echo "Удаляю диск $ID..."
+        yc compute disk delete --id "$ID"
+    done
+fi
 
-    DISK_ID=$(
-        yc compute disk list --format json |
-        jq -r --arg NAME "$DISK_NAME" \
-        '.[] | select(.name == $NAME) | .id' |
-        head -n 1
-    )
-
-    if [[ -n "$DISK_ID" ]]; then
-        echo "Удаляю диск $DISK_NAME..."
-        yc compute disk delete \
-            --id "$DISK_ID"
-    else
-        echo "Диск $DISK_NAME отсутствует, пропускаю."
-    fi
-
-done
+# Загрузочные диски отдельно не ищутся:
+# они создаются вместе с ВМ с auto-delete и собственных меток не получают.
 
 # ==========================================
 # Удаление подсетей
 # ==========================================
 
 echo
-echo "Проверяю подсеть $SUBNET_A_NAME..."
+echo "Ищу подсети с owner=$PREFIX..."
 
-if yc vpc subnet get "$SUBNET_A_NAME" >/dev/null 2>&1; then
-    echo "Удаляю подсеть $SUBNET_A_NAME..."
-    yc vpc subnet delete \
-        --name "$SUBNET_A_NAME"
+mapfile -t SUBNET_IDS < <(
+    find_by_owner "yc vpc subnet list"
+)
+
+if (( ${#SUBNET_IDS[@]} == 0 )); then
+    echo "Подсети отсутствуют, пропускаю."
 else
-    echo "Подсеть $SUBNET_A_NAME отсутствует, пропускаю."
-fi
-
-echo
-echo "Проверяю подсеть $SUBNET_B_NAME..."
-
-if yc vpc subnet get "$SUBNET_B_NAME" >/dev/null 2>&1; then
-    echo "Удаляю подсеть $SUBNET_B_NAME..."
-    yc vpc subnet delete \
-        --name "$SUBNET_B_NAME"
-else
-    echo "Подсеть $SUBNET_B_NAME отсутствует, пропускаю."
+    for ID in "${SUBNET_IDS[@]}"; do
+        echo "Удаляю подсеть $ID..."
+        yc vpc subnet delete --id "$ID"
+    done
 fi
 
 # ==========================================
-# Удаление таблицы маршрутизации
+# Удаление таблиц маршрутизации
 # ==========================================
 
 echo
-echo "Проверяю таблицу маршрутизации $ROUTE_TABLE_NAME..."
+echo "Ищу таблицы маршрутизации с owner=$PREFIX..."
 
-if yc vpc route-table get "$ROUTE_TABLE_NAME" >/dev/null 2>&1; then
-    echo "Удаляю таблицу маршрутизации $ROUTE_TABLE_NAME..."
-    yc vpc route-table delete \
-        --name "$ROUTE_TABLE_NAME"
+mapfile -t ROUTE_TABLE_IDS < <(
+    find_by_owner "yc vpc route-table list"
+)
+
+if (( ${#ROUTE_TABLE_IDS[@]} == 0 )); then
+    echo "Таблицы маршрутизации отсутствуют, пропускаю."
 else
-    echo "Таблица маршрутизации отсутствует, пропускаю."
+    for ID in "${ROUTE_TABLE_IDS[@]}"; do
+        echo "Удаляю таблицу маршрутизации $ID..."
+        yc vpc route-table delete --id "$ID"
+    done
 fi
 
 # ==========================================
-# Удаление NAT-шлюза
+# Удаление NAT-шлюзов
 # ==========================================
 
 echo
-echo "Проверяю NAT-шлюз $NAT_NAME..."
+echo "Ищу NAT-шлюзы с owner=$PREFIX..."
 
-if yc vpc gateway get "$NAT_NAME" >/dev/null 2>&1; then
-    echo "Удаляю NAT-шлюз $NAT_NAME..."
-    yc vpc gateway delete \
-        --name "$NAT_NAME"
+mapfile -t NAT_IDS < <(
+    find_by_owner "yc vpc gateway list"
+)
+
+if (( ${#NAT_IDS[@]} == 0 )); then
+    echo "NAT-шлюзы отсутствуют, пропускаю."
 else
-    echo "NAT-шлюз отсутствует, пропускаю."
+    for ID in "${NAT_IDS[@]}"; do
+        echo "Удаляю NAT-шлюз $ID..."
+        yc vpc gateway delete --id "$ID"
+    done
 fi
 
 # ==========================================
-# Удаление сети
+# Удаление сетей
 # ==========================================
 
 echo
-echo "Проверяю сеть $NETWORK_NAME..."
+echo "Ищу сети с owner=$PREFIX..."
 
-if yc vpc network get "$NETWORK_NAME" >/dev/null 2>&1; then
-    echo "Удаляю сеть $NETWORK_NAME..."
-    yc vpc network delete \
-        --name "$NETWORK_NAME"
+mapfile -t NETWORK_IDS < <(
+    find_by_owner "yc vpc network list"
+)
+
+if (( ${#NETWORK_IDS[@]} == 0 )); then
+    echo "Сети отсутствуют, пропускаю."
 else
-    echo "Сеть $NETWORK_NAME отсутствует, пропускаю."
+    for ID in "${NETWORK_IDS[@]}"; do
+        echo "Удаляю сеть $ID..."
+        yc vpc network delete --id "$ID"
+    done
 fi
 
 echo
