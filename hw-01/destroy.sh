@@ -18,11 +18,9 @@ echo "=========================================="
 # Возвращает ID ресурсов, созданных этим стендом.
 # Поиск выполняется по метке owner, а не по имени.
 find_by_owner() {
-    local command="$1"
-
-    eval "$command --format json" |
-        jq -r --arg OWNER "$PREFIX" --arg ENV "$ENV_NAME" \
-        '.[] | select(.labels.owner == $OWNER and .labels.env == $ENV) | .id'
+    "$@" --format json |
+        jq -r --arg OWNER "$PREFIX" --arg ENV_LABEL "$ENV_NAME" \
+        '.[] | select(.labels.owner == $OWNER and .labels.env == $ENV_LABEL) | .id'
 }
 
 # ==========================================
@@ -33,7 +31,7 @@ echo
 echo "Ищу балансировщики с owner=$PREFIX..."
 
 mapfile -t LB_IDS < <(
-    find_by_owner "yc load-balancer network-load-balancer list"
+    find_by_owner yc load-balancer network-load-balancer list
 )
 
 if (( ${#LB_IDS[@]} == 0 )); then
@@ -53,7 +51,7 @@ echo
 echo "Ищу target group с owner=$PREFIX..."
 
 mapfile -t TG_IDS < <(
-    find_by_owner "yc load-balancer target-group list"
+    find_by_owner yc load-balancer target-group list
 )
 
 if (( ${#TG_IDS[@]} == 0 )); then
@@ -73,7 +71,7 @@ echo
 echo "Ищу ВМ с owner=$PREFIX..."
 
 mapfile -t VM_IDS < <(
-    find_by_owner "yc compute instance list"
+    find_by_owner yc compute instance list
 )
 
 if (( ${#VM_IDS[@]} == 0 )); then
@@ -93,7 +91,7 @@ echo
 echo "Ищу дополнительные диски с owner=$PREFIX..."
 
 mapfile -t DISK_IDS < <(
-    find_by_owner "yc compute disk list"
+    find_by_owner yc compute disk list
 )
 
 if (( ${#DISK_IDS[@]} == 0 )); then
@@ -116,7 +114,7 @@ echo
 echo "Ищу подсети с owner=$PREFIX..."
 
 mapfile -t SUBNET_IDS < <(
-    find_by_owner "yc vpc subnet list"
+    find_by_owner yc vpc subnet list
 )
 
 if (( ${#SUBNET_IDS[@]} == 0 )); then
@@ -136,7 +134,7 @@ echo
 echo "Ищу таблицы маршрутизации с owner=$PREFIX..."
 
 mapfile -t ROUTE_TABLE_IDS < <(
-    find_by_owner "yc vpc route-table list"
+    find_by_owner yc vpc route-table list
 )
 
 if (( ${#ROUTE_TABLE_IDS[@]} == 0 )); then
@@ -156,7 +154,7 @@ echo
 echo "Ищу NAT-шлюзы с owner=$PREFIX..."
 
 mapfile -t NAT_IDS < <(
-    find_by_owner "yc vpc gateway list"
+    find_by_owner yc vpc gateway list
 )
 
 if (( ${#NAT_IDS[@]} == 0 )); then
@@ -176,7 +174,7 @@ echo
 echo "Ищу сети с owner=$PREFIX..."
 
 mapfile -t NETWORK_IDS < <(
-    find_by_owner "yc vpc network list"
+    find_by_owner yc vpc network list
 )
 
 if (( ${#NETWORK_IDS[@]} == 0 )); then
