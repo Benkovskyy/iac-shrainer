@@ -161,7 +161,7 @@ else
 fi
 
 # ==========================================
-# Подключение таблицы маршрутизации к подсети A
+# Подключение таблицы маршрутизации к подсетям
 # ==========================================
 
 echo
@@ -173,3 +173,13 @@ yc vpc subnet update \
     >/dev/null
 
 echo "Таблица маршрутизации подключена к $SUBNET_A_NAME."
+
+echo
+echo "Подключаю таблицу маршрутизации к $SUBNET_B_NAME..."
+
+yc vpc subnet update \
+    --name "$SUBNET_B_NAME" \
+    --route-table-name "$ROUTE_TABLE_NAME" \
+    >/dev/null
+
+echo "Таблица маршрутизации подключена к $SUBNET_B_NAME."
