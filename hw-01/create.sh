@@ -333,6 +333,25 @@ for ((i=1; i<=WEB_COUNT; i++)); do
 done
 
 # ==========================================
+# Сервер приложения
+# ==========================================
+
+APP_NAME="${PREFIX}-app"
+
+echo
+echo "Проверяю сервер приложения $APP_NAME..."
+
+if yc compute instance get "$APP_NAME" >/dev/null 2>&1; then
+    echo "ВМ $APP_NAME уже существует, пропускаю."
+else
+    echo "Создаю сервер приложения $APP_NAME..."
+
+    sed         -e "s|__SSH_KEY__|$SSH_KEY|g"         -e "s|__PORT__|$PORT|g"         -e "s|__WORD__|$WORD|g"         -e "s|__SERVER_NAME__|$APP_NAME|g"         "$CLOUD_INIT_TEMPLATE" > "$CLOUD_INIT_FILE"
+
+    yc compute instance create         --name "$APP_NAME"         --zone "$ZONE_A"         --cores 2         --memory 2GB         --create-boot-disk             "image-family=ubuntu-2204-lts,image-folder-id=standard-images,size=${BOOT_DISK_SIZE}GB"         --network-interface             "subnet-name=$SUBNET_A_NAME"         --metadata-from-file             "user-data=$CLOUD_INIT_FILE"
+fi
+
+# ==========================================
 # Очистка временного cloud-init
 # ==========================================
 # Target group и балансировщик
