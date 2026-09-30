@@ -11,7 +11,7 @@ PREFIX="${PREFIX:-shrainer}"
 WEB_COUNT="${WEB_COUNT:-3}"
 
 ZONE_A="${ZONE_A:-ru-central1-d}"
-ZONE_B="${ZONE_B:-ru-central1-a}"
+ZONE_B="${ZONE_B:-ru-central1-b}"
 
 NETWORK_NAME="${PREFIX}-net"
 SUBNET_A_NAME="${PREFIX}-subnet-a"

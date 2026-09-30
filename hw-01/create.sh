@@ -9,7 +9,7 @@ set -euo pipefail
 PREFIX="${PREFIX:-shrainer}"
 
 ZONE_A="${ZONE_A:-ru-central1-d}"
-ZONE_B="${ZONE_B:-ru-central1-a}"
+ZONE_B="${ZONE_B:-ru-central1-b}"
 
 CIDR_A="${CIDR_A:-10.16.1.0/24}"
 CIDR_B="${CIDR_B:-10.16.2.0/24}"
