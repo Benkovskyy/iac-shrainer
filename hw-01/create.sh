@@ -3,13 +3,11 @@ set -euo pipefail
 
 # ==========================================
 # Домашняя работа №1
-# Вариант 06 (Шрайнер)
+# Вариант 06 — Шрайнер
 # ==========================================
 
-# Личный префикс ресурсов
 PREFIX="${PREFIX:-shrainer}"
 
-# Параметры варианта
 ZONE_A="${ZONE_A:-ru-central1-d}"
 ZONE_B="${ZONE_B:-ru-central1-a}"
 
@@ -18,15 +16,25 @@ CIDR_B="${CIDR_B:-10.16.2.0/24}"
 
 PORT="${PORT:-8018}"
 WORD="${WORD:-netlab}"
+
 WEB_COUNT="${WEB_COUNT:-3}"
+DISK_SIZE="${DISK_SIZE:-15}"
+BOOT_DISK_SIZE="${BOOT_DISK_SIZE:-25}"
+
 ENV_NAME="${ENV_NAME:-dev}"
 
-# Разбор аргументов командной строки.
-# Аргумент имеет приоритет над переменной окружения и значением по умолчанию.
+# ==========================================
+# Аргументы
+# ==========================================
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --web-count)
             WEB_COUNT="$2"
+            shift 2
+            ;;
+        --disk-size)
+            DISK_SIZE="$2"
             shift 2
             ;;
         --port)
@@ -67,15 +75,26 @@ echo "Подсеть B:     $CIDR_B"
 echo "Порт:          $PORT"
 echo "Слово:         $WORD"
 echo "Web-серверов:  $WEB_COUNT"
+echo "Доп. диск:     ${DISK_SIZE} ГБ"
+echo "Boot-диск:     ${BOOT_DISK_SIZE} ГБ"
 echo "Окружение:     $ENV_NAME"
 echo "=========================================="
 
-
 # ==========================================
-# Создание сети
+# Имена ресурсов
 # ==========================================
 
 NETWORK_NAME="${PREFIX}-net"
+
+SUBNET_A_NAME="${PREFIX}-subnet-a"
+SUBNET_B_NAME="${PREFIX}-subnet-b"
+
+NAT_NAME="${PREFIX}-nat"
+ROUTE_TABLE_NAME="${PREFIX}-rt"
+
+# ==========================================
+# Сеть
+# ==========================================
 
 echo
 echo "Проверяю сеть $NETWORK_NAME..."
@@ -84,16 +103,13 @@ if yc vpc network get "$NETWORK_NAME" >/dev/null 2>&1; then
     echo "Сеть $NETWORK_NAME уже существует, пропускаю."
 else
     echo "Создаю сеть $NETWORK_NAME..."
-    yc vpc network create --name "$NETWORK_NAME"
+    yc vpc network create \
+        --name "$NETWORK_NAME"
 fi
 
-
 # ==========================================
-# Создание подсетей
+# Подсеть A
 # ==========================================
-
-SUBNET_A_NAME="${PREFIX}-subnet-a"
-SUBNET_B_NAME="${PREFIX}-subnet-b"
 
 echo
 echo "Проверяю подсеть $SUBNET_A_NAME..."
@@ -102,12 +118,17 @@ if yc vpc subnet get "$SUBNET_A_NAME" >/dev/null 2>&1; then
     echo "Подсеть $SUBNET_A_NAME уже существует, пропускаю."
 else
     echo "Создаю подсеть $SUBNET_A_NAME..."
+
     yc vpc subnet create \
         --name "$SUBNET_A_NAME" \
         --zone "$ZONE_A" \
         --network-name "$NETWORK_NAME" \
         --range "$CIDR_A"
 fi
+
+# ==========================================
+# Подсеть B
+# ==========================================
 
 echo
 echo "Проверяю подсеть $SUBNET_B_NAME..."
@@ -116,6 +137,7 @@ if yc vpc subnet get "$SUBNET_B_NAME" >/dev/null 2>&1; then
     echo "Подсеть $SUBNET_B_NAME уже существует, пропускаю."
 else
     echo "Создаю подсеть $SUBNET_B_NAME..."
+
     yc vpc subnet create \
         --name "$SUBNET_B_NAME" \
         --zone "$ZONE_B" \
@@ -123,13 +145,9 @@ else
         --range "$CIDR_B"
 fi
 
-
 # ==========================================
-# Создание NAT-шлюза
+# NAT-шлюз
 # ==========================================
-
-NAT_NAME="${PREFIX}-nat"
-ROUTE_TABLE_NAME="${PREFIX}-rt"
 
 echo
 echo "Проверяю NAT-шлюз $NAT_NAME..."
@@ -138,13 +156,20 @@ if yc vpc gateway get "$NAT_NAME" >/dev/null 2>&1; then
     echo "NAT-шлюз $NAT_NAME уже существует, пропускаю."
 else
     echo "Создаю NAT-шлюз $NAT_NAME..."
-    yc vpc gateway create --name "$NAT_NAME"
+
+    yc vpc gateway create \
+        --name "$NAT_NAME"
 fi
 
-GW_ID=$(yc vpc gateway get --name "$NAT_NAME" --format json | jq -r '.id')
+GW_ID=$(
+    yc vpc gateway get \
+        --name "$NAT_NAME" \
+        --format json |
+        jq -r '.id'
+)
 
 # ==========================================
-# Создание таблицы маршрутизации
+# Таблица маршрутизации
 # ==========================================
 
 echo
@@ -154,6 +179,7 @@ if yc vpc route-table get "$ROUTE_TABLE_NAME" >/dev/null 2>&1; then
     echo "Таблица маршрутизации $ROUTE_TABLE_NAME уже существует, пропускаю."
 else
     echo "Создаю таблицу маршрутизации $ROUTE_TABLE_NAME..."
+
     yc vpc route-table create \
         --name "$ROUTE_TABLE_NAME" \
         --network-name "$NETWORK_NAME" \
@@ -161,7 +187,7 @@ else
 fi
 
 # ==========================================
-# Подключение таблицы маршрутизации к подсетям
+# Подключение route table
 # ==========================================
 
 echo
@@ -183,3 +209,136 @@ yc vpc subnet update \
     >/dev/null
 
 echo "Таблица маршрутизации подключена к $SUBNET_B_NAME."
+
+# ==========================================
+# Cloud-init
+# ==========================================
+
+SSH_KEY_FILE="$HOME/.ssh/id_ed25519.pub"
+CLOUD_INIT_TEMPLATE="cloud-init.tpl.yaml"
+CLOUD_INIT_FILE="cloud-init.yaml"
+
+if [[ ! -f "$SSH_KEY_FILE" ]]; then
+    echo "Ошибка: SSH-ключ $SSH_KEY_FILE не найден."
+    exit 1
+fi
+
+if [[ ! -f "$CLOUD_INIT_TEMPLATE" ]]; then
+    echo "Ошибка: шаблон $CLOUD_INIT_TEMPLATE не найден."
+    exit 1
+fi
+
+SSH_KEY=$(cat "$SSH_KEY_FILE")
+
+# ==========================================
+# Виртуальные машины
+# ==========================================
+
+echo
+echo "Создаю виртуальные машины..."
+
+for ((i=1; i<=WEB_COUNT; i++)); do
+
+    VM_NAME="${PREFIX}-web-${i}"
+    DISK_NAME="${PREFIX}-data-${i}"
+
+    # Нечётные машины — зона A
+    # Чётные машины — зона B
+    if (( i % 2 == 1 )); then
+        VM_ZONE="$ZONE_A"
+        VM_SUBNET="$SUBNET_A_NAME"
+    else
+        VM_ZONE="$ZONE_B"
+        VM_SUBNET="$SUBNET_B_NAME"
+    fi
+
+    echo
+    echo "------------------------------------------"
+    echo "ВМ:      $VM_NAME"
+    echo "Зона:    $VM_ZONE"
+    echo "Подсеть: $VM_SUBNET"
+    echo "------------------------------------------"
+
+    # ======================================
+    # Генерация cloud-init
+    # ======================================
+
+    sed \
+        -e "s|__SSH_KEY__|$SSH_KEY|g" \
+        -e "s|__PORT__|$PORT|g" \
+        -e "s|__WORD__|$WORD|g" \
+        -e "s|__SERVER_NAME__|$VM_NAME|g" \
+        "$CLOUD_INIT_TEMPLATE" > "$CLOUD_INIT_FILE"
+
+    # ======================================
+    # Дополнительный диск
+    # ======================================
+
+    DISK_EXISTS=$(
+        yc compute disk list \
+            --format json |
+            jq -r --arg NAME "$DISK_NAME" \
+            '.[] | select(.name == $NAME) | .id' |
+            head -n 1
+    )
+
+    if [[ -n "$DISK_EXISTS" ]]; then
+        echo "Диск $DISK_NAME уже существует, пропускаю."
+    else
+        echo "Создаю дополнительный диск $DISK_NAME (${DISK_SIZE} ГБ)..."
+
+        yc compute disk create \
+            --name "$DISK_NAME" \
+            --zone "$VM_ZONE" \
+            --size "$DISK_SIZE"
+    fi
+
+    # ======================================
+    # Проверка существования ВМ
+    # ======================================
+
+    VM_EXISTS=$(
+        yc compute instance list \
+            --format json |
+            jq -r --arg NAME "$VM_NAME" \
+            '.[] | select(.name == $NAME) | .id' |
+            head -n 1
+    )
+
+    if [[ -n "$VM_EXISTS" ]]; then
+        echo "ВМ $VM_NAME уже существует, пропускаю."
+        continue
+    fi
+
+    # ======================================
+    # Создание ВМ
+    # ======================================
+
+    echo "Создаю ВМ $VM_NAME..."
+
+    yc compute instance create \
+        --name "$VM_NAME" \
+        --zone "$VM_ZONE" \
+        --cores 2 \
+        --memory 2GB \
+        --create-boot-disk \
+            "image-family=ubuntu-2204-lts,image-folder-id=standard-images,size=${BOOT_DISK_SIZE}GB" \
+        --attach-disk \
+            "disk-name=$DISK_NAME,device-name=data-disk" \
+        --network-interface \
+            "subnet-name=$VM_SUBNET,nat-ip-version=ipv4" \
+        --metadata-from-file \
+            "user-data=$CLOUD_INIT_FILE"
+
+done
+
+# ==========================================
+# Очистка временного cloud-init
+# ==========================================
+
+rm -f "$CLOUD_INIT_FILE"
+
+echo
+echo "=========================================="
+echo "Создание виртуальных машин завершено."
+echo "=========================================="
