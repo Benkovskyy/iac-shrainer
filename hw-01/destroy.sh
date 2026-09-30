@@ -95,6 +95,28 @@ for ((i=1; i<=WEB_COUNT; i++)); do
 done
 
 # ==========================================
+# Удаление сервера приложения
+# ==========================================
+
+APP_NAME="${PREFIX}-app"
+
+echo
+echo "Проверяю ВМ $APP_NAME..."
+
+APP_ID=$(
+    yc compute instance list --format json |
+    jq -r --arg NAME "$APP_NAME"     '.[] | select(.name == $NAME) | .id' |
+    head -n 1
+)
+
+if [[ -n "$APP_ID" ]]; then
+    echo "Удаляю ВМ $APP_NAME..."
+    yc compute instance delete         --id "$APP_ID"
+else
+    echo "ВМ $APP_NAME отсутствует, пропускаю."
+fi
+
+# ==========================================
 # Удаление дополнительных дисков
 # ==========================================
 
