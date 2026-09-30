@@ -64,6 +64,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+LABELS="env=${ENV_NAME},owner=${PREFIX}"
+
 echo "=========================================="
 echo "Создание стенда"
 echo "=========================================="
@@ -104,6 +106,7 @@ if yc vpc network get "$NETWORK_NAME" >/dev/null 2>&1; then
 else
     echo "Создаю сеть $NETWORK_NAME..."
     yc vpc network create \
+        --labels "$LABELS" \
         --name "$NETWORK_NAME"
 fi
 
@@ -120,6 +123,7 @@ else
     echo "Создаю подсеть $SUBNET_A_NAME..."
 
     yc vpc subnet create \
+        --labels "$LABELS" \
         --name "$SUBNET_A_NAME" \
         --zone "$ZONE_A" \
         --network-name "$NETWORK_NAME" \
@@ -139,6 +143,7 @@ else
     echo "Создаю подсеть $SUBNET_B_NAME..."
 
     yc vpc subnet create \
+        --labels "$LABELS" \
         --name "$SUBNET_B_NAME" \
         --zone "$ZONE_B" \
         --network-name "$NETWORK_NAME" \
@@ -158,6 +163,7 @@ else
     echo "Создаю NAT-шлюз $NAT_NAME..."
 
     yc vpc gateway create \
+        --labels "$LABELS" \
         --name "$NAT_NAME"
 fi
 
@@ -181,6 +187,7 @@ else
     echo "Создаю таблицу маршрутизации $ROUTE_TABLE_NAME..."
 
     yc vpc route-table create \
+        --labels "$LABELS" \
         --name "$ROUTE_TABLE_NAME" \
         --network-name "$NETWORK_NAME" \
         --route "destination=0.0.0.0/0,gateway-id=$GW_ID"
@@ -288,6 +295,7 @@ for ((i=1; i<=WEB_COUNT; i++)); do
         echo "Создаю дополнительный диск $DISK_NAME (${DISK_SIZE} ГБ)..."
 
         yc compute disk create \
+        --labels "$LABELS" \
             --name "$DISK_NAME" \
             --zone "$VM_ZONE" \
             --size "$DISK_SIZE"
@@ -317,6 +325,7 @@ for ((i=1; i<=WEB_COUNT; i++)); do
     echo "Создаю ВМ $VM_NAME..."
 
     yc compute instance create \
+        --labels "$LABELS" \
         --name "$VM_NAME" \
         --zone "$VM_ZONE" \
         --cores 2 \
@@ -348,7 +357,7 @@ else
 
     sed         -e "s|__SSH_KEY__|$SSH_KEY|g"         -e "s|__PORT__|$PORT|g"         -e "s|__WORD__|$WORD|g"         -e "s|__SERVER_NAME__|$APP_NAME|g"         "$CLOUD_INIT_TEMPLATE" > "$CLOUD_INIT_FILE"
 
-    yc compute instance create         --name "$APP_NAME"         --zone "$ZONE_A"         --cores 2         --memory 2GB         --create-boot-disk             "image-family=ubuntu-2204-lts,image-folder-id=standard-images,size=${BOOT_DISK_SIZE}GB"         --network-interface             "subnet-name=$SUBNET_A_NAME"         --metadata-from-file             "user-data=$CLOUD_INIT_FILE"
+    yc compute instance create         --labels "$LABELS"         --name "$APP_NAME"         --zone "$ZONE_A"         --cores 2         --memory 2GB         --create-boot-disk             "image-family=ubuntu-2204-lts,image-folder-id=standard-images,size=${BOOT_DISK_SIZE}GB"         --network-interface             "subnet-name=$SUBNET_A_NAME"         --metadata-from-file             "user-data=$CLOUD_INIT_FILE"
 fi
 
 # ==========================================
@@ -382,6 +391,7 @@ if [[ -z "$TG_EXISTS" ]]; then
     done
 
     yc load-balancer target-group create \
+        --labels "$LABELS" \
         --name "$TG_NAME" \
         "${TARGET_ARGS[@]}"
 else
@@ -399,6 +409,7 @@ LB_EXISTS=$(
 
 if [[ -z "$LB_EXISTS" ]]; then
     yc load-balancer network-load-balancer create \
+        --labels "$LABELS" \
         --name "$LB_NAME" \
         --listener "name=${PREFIX}-listener,port=80,target-port=${PORT},external-ip-version=ipv4"
 
