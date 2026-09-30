@@ -18,11 +18,53 @@ SUBNET_A_NAME="${PREFIX}-subnet-a"
 SUBNET_B_NAME="${PREFIX}-subnet-b"
 ROUTE_TABLE_NAME="${PREFIX}-rt"
 NAT_NAME="${PREFIX}-nat"
+TG_NAME="${PREFIX}-tg"
+LB_NAME="${PREFIX}-lb"
 
 echo "=========================================="
 echo "Удаление стенда"
 echo "Префикс: $PREFIX"
 echo "=========================================="
+
+# ==========================================
+# Удаление балансировщика
+# ==========================================
+
+echo
+echo "Проверяю балансировщик $LB_NAME..."
+
+LB_ID=$(
+    yc load-balancer network-load-balancer list --format json |
+    jq -r --arg NAME "$LB_NAME" '.[] | select(.name == $NAME) | .id' |
+    head -n 1
+)
+
+if [[ -n "$LB_ID" ]]; then
+    echo "Удаляю балансировщик $LB_NAME..."
+    yc load-balancer network-load-balancer delete --id "$LB_ID"
+else
+    echo "Балансировщик $LB_NAME отсутствует, пропускаю."
+fi
+
+# ==========================================
+# Удаление target group
+# ==========================================
+
+echo
+echo "Проверяю target group $TG_NAME..."
+
+TG_ID=$(
+    yc load-balancer target-group list --format json |
+    jq -r --arg NAME "$TG_NAME" '.[] | select(.name == $NAME) | .id' |
+    head -n 1
+)
+
+if [[ -n "$TG_ID" ]]; then
+    echo "Удаляю target group $TG_NAME..."
+    yc load-balancer target-group delete --id "$TG_ID"
+else
+    echo "Target group $TG_NAME отсутствует, пропускаю."
+fi
 
 # ==========================================
 # Удаление виртуальных машин
