@@ -1,0 +1,458 @@
+==========================================
+Создание стенда
+==========================================
+Префикс:       shrainer
+Зона A:        ru-central1-d
+Зона B:        ru-central1-b
+Подсеть A:     10.16.1.0/24
+Подсеть B:     10.16.2.0/24
+Порт:          8018
+Слово:         netlab
+Web-серверов:  3
+Доп. диск:     15 ГБ
+Boot-диск:     25 ГБ
+Окружение:     dev
+==========================================
+
+Проверяю сеть shrainer-net...
+Создаю сеть shrainer-net...
+id: enpenbfh3e7l2c202ea1
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:33Z"
+name: shrainer-net
+labels:
+  env: dev
+  owner: shrainer
+default_security_group_id: enpgs3p1bfu5i4k7tpjb
+
+
+Проверяю подсеть shrainer-subnet-a...
+Создаю подсеть shrainer-subnet-a...
+id: fl8j3eavo0lf2bscsnh3
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:36Z"
+name: shrainer-subnet-a
+labels:
+  env: dev
+  owner: shrainer
+network_id: enpenbfh3e7l2c202ea1
+zone_id: ru-central1-d
+v4_cidr_blocks:
+  - 10.16.1.0/24
+
+
+Проверяю подсеть shrainer-subnet-b...
+Создаю подсеть shrainer-subnet-b...
+id: e2lsidgad378buqh3gco
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:37Z"
+name: shrainer-subnet-b
+labels:
+  env: dev
+  owner: shrainer
+network_id: enpenbfh3e7l2c202ea1
+zone_id: ru-central1-b
+v4_cidr_blocks:
+  - 10.16.2.0/24
+
+
+Проверяю NAT-шлюз shrainer-nat...
+Создаю NAT-шлюз shrainer-nat...
+id: enpkq16dnc6e9fo5tjo0
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:39Z"
+name: shrainer-nat
+labels:
+  env: dev
+  owner: shrainer
+shared_egress_gateway: {}
+
+
+Проверяю таблицу маршрутизации shrainer-rt...
+Создаю таблицу маршрутизации shrainer-rt...
+id: enp4rnjqoh87ha54i0cb
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:42Z"
+name: shrainer-rt
+labels:
+  env: dev
+  owner: shrainer
+network_id: enpenbfh3e7l2c202ea1
+static_routes:
+  - destination_prefix: 0.0.0.0/0
+    gateway_id: enpkq16dnc6e9fo5tjo0
+
+
+Подключаю таблицу маршрутизации к shrainer-subnet-a...
+Таблица маршрутизации подключена к shrainer-subnet-a.
+
+Подключаю таблицу маршрутизации к shrainer-subnet-b...
+Таблица маршрутизации подключена к shrainer-subnet-b.
+
+Создаю виртуальные машины...
+
+------------------------------------------
+ВМ:      shrainer-web-1
+Зона:    ru-central1-d
+Подсеть: shrainer-subnet-a
+------------------------------------------
+Создаю дополнительный диск shrainer-data-1 (15 ГБ)...
+...1s...6s...done (10s)
+id: fv4q4o1j5f1nl7qtjpdp
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:37:48Z"
+name: shrainer-data-1
+labels:
+  env: dev
+  owner: shrainer
+type_id: network-hdd
+zone_id: ru-central1-d
+size: "16106127360"
+block_size: "4096"
+status: READY
+disk_placement_policy: {}
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+
+Создаю ВМ shrainer-web-1...
+...1s...6s...11s...17s...22s...27s...32s...37s...43s...done (45s)
+id: fv4dq44o6ono90vch8n9
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:38:01Z"
+name: shrainer-web-1
+labels:
+  env: dev
+  owner: shrainer
+zone_id: ru-central1-d
+platform_id: standard-v2
+resources:
+  memory: "2147483648"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+boot_disk:
+  mode: READ_WRITE
+  device_name: fv4fg35400drlcgng9im
+  auto_delete: true
+  disk_id: fv4fg35400drlcgng9im
+secondary_disks:
+  - mode: READ_WRITE
+    device_name: data-disk
+    disk_id: fv4q4o1j5f1nl7qtjpdp
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:dd:10:98:36
+    subnet_id: fl8j3eavo0lf2bscsnh3
+    primary_v4_address:
+      address: 10.16.1.28
+      one_to_one_nat:
+        address: 81.26.183.200
+        ip_version: IPV4
+fqdn: fv4dq44o6ono90vch8n9.auto.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+gpu_settings: {}
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+  aws_v2_http_endpoint: ENABLED
+  aws_v2_http_token: ENABLED
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+application: {}
+
+
+------------------------------------------
+ВМ:      shrainer-web-2
+Зона:    ru-central1-b
+Подсеть: shrainer-subnet-b
+------------------------------------------
+Создаю дополнительный диск shrainer-data-2 (15 ГБ)...
+...1s...6s...done (8s)
+id: epd56v97qh0fc2fd96td
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:38:49Z"
+name: shrainer-data-2
+labels:
+  env: dev
+  owner: shrainer
+type_id: network-hdd
+zone_id: ru-central1-b
+size: "16106127360"
+block_size: "4096"
+status: READY
+disk_placement_policy: {}
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+
+Создаю ВМ shrainer-web-2...
+...1s...6s...12s...17s...22s...28s...33s...39s...done (39s)
+id: epdd56tipsoofukbmh98
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:39:00Z"
+name: shrainer-web-2
+labels:
+  env: dev
+  owner: shrainer
+zone_id: ru-central1-b
+platform_id: standard-v2
+resources:
+  memory: "2147483648"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+boot_disk:
+  mode: READ_WRITE
+  device_name: epdkfa4crcutk50nitcc
+  auto_delete: true
+  disk_id: epdkfa4crcutk50nitcc
+secondary_disks:
+  - mode: READ_WRITE
+    device_name: data-disk
+    disk_id: epd56v97qh0fc2fd96td
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:d2:9b:b2:cf
+    subnet_id: e2lsidgad378buqh3gco
+    primary_v4_address:
+      address: 10.16.2.12
+      one_to_one_nat:
+        address: 37.230.169.223
+        ip_version: IPV4
+fqdn: epdd56tipsoofukbmh98.auto.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+gpu_settings: {}
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+  aws_v2_http_endpoint: ENABLED
+  aws_v2_http_token: ENABLED
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+application: {}
+
+
+------------------------------------------
+ВМ:      shrainer-web-3
+Зона:    ru-central1-d
+Подсеть: shrainer-subnet-a
+------------------------------------------
+Создаю дополнительный диск shrainer-data-3 (15 ГБ)...
+...1s...6s...done (9s)
+id: fv4eis8l8a83nn57526b
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:39:41Z"
+name: shrainer-data-3
+labels:
+  env: dev
+  owner: shrainer
+type_id: network-hdd
+zone_id: ru-central1-d
+size: "16106127360"
+block_size: "4096"
+status: READY
+disk_placement_policy: {}
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+
+Создаю ВМ shrainer-web-3...
+...1s...6s...11s...16s...22s...27s...33s...38s...done (40s)
+id: fv4736lti0prkgtsp90q
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:39:53Z"
+name: shrainer-web-3
+labels:
+  env: dev
+  owner: shrainer
+zone_id: ru-central1-d
+platform_id: standard-v2
+resources:
+  memory: "2147483648"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+boot_disk:
+  mode: READ_WRITE
+  device_name: fv413uslnoaug86p8s8i
+  auto_delete: true
+  disk_id: fv413uslnoaug86p8s8i
+secondary_disks:
+  - mode: READ_WRITE
+    device_name: data-disk
+    disk_id: fv4eis8l8a83nn57526b
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:71:9a:bd:90
+    subnet_id: fl8j3eavo0lf2bscsnh3
+    primary_v4_address:
+      address: 10.16.1.24
+      one_to_one_nat:
+        address: 158.160.223.240
+        ip_version: IPV4
+fqdn: fv4736lti0prkgtsp90q.auto.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+gpu_settings: {}
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+  aws_v2_http_endpoint: ENABLED
+  aws_v2_http_token: ENABLED
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+application: {}
+
+
+Проверяю сервер приложения shrainer-app...
+Создаю сервер приложения shrainer-app...
+...1s...6s...12s...17s...22s...27s...33s...done (35s)
+id: fv4p2qfhr9k79h9sjevp
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:40:37Z"
+name: shrainer-app
+labels:
+  env: dev
+  owner: shrainer
+zone_id: ru-central1-d
+platform_id: standard-v2
+resources:
+  memory: "2147483648"
+  cores: "2"
+  core_fraction: "100"
+status: RUNNING
+boot_disk:
+  mode: READ_WRITE
+  device_name: fv433nbi64o8k5u1btip
+  auto_delete: true
+  disk_id: fv433nbi64o8k5u1btip
+network_interfaces:
+  - index: "0"
+    mac_address: d0:0d:19:16:9f:1d
+    subnet_id: fl8j3eavo0lf2bscsnh3
+    primary_v4_address:
+      address: 10.16.1.10
+fqdn: fv4p2qfhr9k79h9sjevp.auto.internal
+scheduling_policy: {}
+network_settings:
+  type: STANDARD
+placement_policy: {}
+gpu_settings: {}
+metadata_options:
+  gce_http_endpoint: ENABLED
+  aws_v1_http_endpoint: ENABLED
+  gce_http_token: ENABLED
+  aws_v1_http_token: DISABLED
+  aws_v2_http_endpoint: ENABLED
+  aws_v2_http_token: ENABLED
+serial_port_settings:
+  ssh_authorization: OS_LOGIN
+hardware_generation:
+  legacy_features:
+    pci_topology: PCI_TOPOLOGY_V2
+application: {}
+
+
+Создаю target group shrainer-tg...
+...1s...done (1s)
+id: enpb6lakbcbgspskrs5g
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:41:17Z"
+name: shrainer-tg
+labels:
+  env: dev
+  owner: shrainer
+region_id: ru-central1
+targets:
+  - subnet_id: e2lsidgad378buqh3gco
+    address: 10.16.2.12
+  - subnet_id: fl8j3eavo0lf2bscsnh3
+    address: 10.16.1.24
+  - subnet_id: fl8j3eavo0lf2bscsnh3
+    address: 10.16.1.28
+
+
+Создаю сетевой балансировщик shrainer-lb...
+...1s...done (1s)
+id: enpl2jir4pjg9de2g54u
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:41:20Z"
+name: shrainer-lb
+labels:
+  env: dev
+  owner: shrainer
+region_id: ru-central1
+status: INACTIVE
+type: EXTERNAL
+listeners:
+  - name: shrainer-listener
+    address: 158.160.135.187
+    port: "80"
+    protocol: TCP
+    ip_version: IPV4
+    target_port: "8018"
+
+...1s...done (1s)
+id: enpl2jir4pjg9de2g54u
+folder_id: b1gig580ge9bttu4itso
+created_at: "2026-09-30T19:41:20Z"
+name: shrainer-lb
+labels:
+  env: dev
+  owner: shrainer
+region_id: ru-central1
+status: ACTIVE
+type: EXTERNAL
+listeners:
+  - name: shrainer-listener
+    address: 158.160.135.187
+    port: "80"
+    protocol: TCP
+    ip_version: IPV4
+    target_port: "8018"
+attached_target_groups:
+  - target_group_id: enpb6lakbcbgspskrs5g
+    health_checks:
+      - name: shrainer-healthcheck
+        interval: 2s
+        timeout: 1s
+        unhealthy_threshold: "2"
+        healthy_threshold: "2"
+        http_options:
+          port: "8018"
+          path: /
+
+Балансировщик настроен.
+
+==========================================
+Создание виртуальных машин завершено.
+==========================================
+
+real	3m53.608s
+user	0m12.875s
+sys	0m4.994s
+Код создания: 0
