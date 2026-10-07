@@ -5,6 +5,7 @@ default:
 
 stages:
   - proverka
+  - stend
 
 shellcheck:
   stage: proverka
@@ -35,3 +36,23 @@ proverka-dostupa:
   script:
     - echo "Проверяю доступ, вариант 06, слово netlab"
     - yc vpc network list
+
+# Ручная задача: стенд второй работы — создать, проверить, снести
+stend-p2:
+  extends: .yc
+  stage: stend
+  when: manual
+  variables:
+    PREFIX: shrainer-06
+    GREETING: netlab
+    RUNNER_AFTER_SCRIPT_TIMEOUT: 15m
+  script:
+    - echo "Стенд второй работы из пайплайна, вариант 06, префикс $PREFIX, слово $GREETING"
+    - mkdir -p ~/.ssh
+    - ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 -q
+    - bash work-02/create.sh
+    - bash work-02/check-lb.sh
+  after_script:
+    - export PATH=/usr/local/bin:$PATH
+    - echo "Уборка стенда, префикс $PREFIX"
+    - bash work-02/destroy.sh
