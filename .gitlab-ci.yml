@@ -10,6 +10,12 @@ stages:
 shellcheck:
   stage: proverka
   image: koalaman/shellcheck-alpine:stable
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - "**/*.sh"
+        - ".gitlab-ci.yml"
+    - when: never
   script:
     - echo "Вариант 06, слово netlab"
     - shellcheck --version
@@ -56,3 +62,11 @@ stend-p2:
     - export PATH=/usr/local/bin:$PATH
     - echo "Уборка стенда, префикс $PREFIX"
     - bash work-02/destroy.sh
+
+# Проверка синтаксиса шаблона cloud-init
+yamllint:
+  stage: proverka
+  image: alpine:3.20
+  script:
+    - apk add --no-cache yamllint >/dev/null
+    - yamllint -d relaxed work-02/cloud-init.tpl.yaml
