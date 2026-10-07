@@ -1,114 +1,132 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PREFIX="shrainer-06"
-VM_COUNT="${1:-3}"
+PREFIX="${PREFIX:-shrainer-06}"
+NAME_PREFIX="${PREFIX}-"
 
-NETWORK_NAME="${PREFIX}-net"
-SUBNET_A="${PREFIX}-subnet-a"
-SUBNET_B="${PREFIX}-subnet-b"
-DATA_DISK="${PREFIX}-data"
-TARGET_GROUP="${PREFIX}-tg"
-LOAD_BALANCER="${PREFIX}-lb"
+echo "=== Удаление ресурсов с префиксом ${PREFIX} ==="
 
-echo "=== Удаление стенда ${PREFIX} ==="
+echo "==> балансировщики"
+mapfile -t LB_IDS < <(
+  yc load-balancer network-load-balancer list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
 
-# ---- балансировщик ----
-echo "==> балансировщик"
-
-if yc load-balancer network-load-balancer get \
-  --name "${LOAD_BALANCER}" >/dev/null 2>&1; then
-
-  yc load-balancer network-load-balancer delete \
-    --name "${LOAD_BALANCER}"
+if (( ${#LB_IDS[@]} == 0 )); then
+  echo "Балансировщики отсутствуют."
 else
-  echo "${LOAD_BALANCER}: уже отсутствует"
+  for ID in "${LB_IDS[@]}"; do
+    echo "Удаляю балансировщик ${ID}..."
+    if ! yc load-balancer network-load-balancer delete --id "$ID"; then
+      echo "Не удалось удалить балансировщик ${ID}, продолжаю уборку." >&2
+    fi
+  done
 fi
 
-# ---- целевая группа ----
-echo "==> целевая группа"
+echo "==> целевые группы"
+mapfile -t TG_IDS < <(
+  yc load-balancer target-group list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
 
-if yc load-balancer target-group get \
-  --name "${TARGET_GROUP}" >/dev/null 2>&1; then
-
-  yc load-balancer target-group delete \
-    --name "${TARGET_GROUP}"
+if (( ${#TG_IDS[@]} == 0 )); then
+  echo "Целевые группы отсутствуют."
 else
-  echo "${TARGET_GROUP}: уже отсутствует"
+  for ID in "${TG_IDS[@]}"; do
+    echo "Удаляю целевую группу ${ID}..."
+    if ! yc load-balancer target-group delete --id "$ID"; then
+      echo "Не удалось удалить целевую группу ${ID}, продолжаю уборку." >&2
+    fi
+  done
 fi
 
-# ---- виртуальные машины ----
 echo "==> виртуальные машины"
+mapfile -t VM_IDS < <(
+  yc compute instance list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
 
-for i in $(seq 1 "${VM_COUNT}"); do
-  VM_NAME="${PREFIX}-app-${i}"
-
-  if yc compute instance get \
-    --name "${VM_NAME}" >/dev/null 2>&1; then
-
-    echo "Удаление ${VM_NAME}"
-
-    yc compute instance delete \
-      --name "${VM_NAME}"
-  else
-    echo "${VM_NAME}: уже отсутствует"
-  fi
-done
-
-# ---- дополнительный диск ----
-echo "==> дополнительный диск"
-
-if yc compute disk get \
-  --name "${DATA_DISK}" >/dev/null 2>&1; then
-
-  yc compute disk delete \
-    --name "${DATA_DISK}"
+if (( ${#VM_IDS[@]} == 0 )); then
+  echo "Виртуальные машины отсутствуют."
 else
-  echo "${DATA_DISK}: уже отсутствует"
+  for ID in "${VM_IDS[@]}"; do
+    echo "Удаляю ВМ ${ID}..."
+    if ! yc compute instance delete --id "$ID"; then
+      echo "Не удалось удалить ВМ ${ID}, продолжаю уборку." >&2
+    fi
+  done
 fi
 
-# ---- подсети ----
+echo "==> дополнительные диски"
+mapfile -t DISK_IDS < <(
+  yc compute disk list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
+
+if (( ${#DISK_IDS[@]} == 0 )); then
+  echo "Дополнительные диски отсутствуют."
+else
+  for ID in "${DISK_IDS[@]}"; do
+    echo "Удаляю диск ${ID}..."
+    if ! yc compute disk delete --id "$ID"; then
+      echo "Не удалось удалить диск ${ID}, продолжаю уборку." >&2
+    fi
+  done
+fi
+
 echo "==> подсети"
+mapfile -t SUBNET_IDS < <(
+  yc vpc subnet list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
 
-for SUBNET in "${SUBNET_A}" "${SUBNET_B}"; do
-  if yc vpc subnet get \
-    --name "${SUBNET}" >/dev/null 2>&1; then
-
-    yc vpc subnet delete \
-      --name "${SUBNET}"
-  else
-    echo "${SUBNET}: уже отсутствует"
-  fi
-done
-
-# ---- сеть ----
-echo "==> сеть"
-
-if yc vpc network get \
-  --name "${NETWORK_NAME}" >/dev/null 2>&1; then
-
-  yc vpc network delete \
-    --name "${NETWORK_NAME}"
+if (( ${#SUBNET_IDS[@]} == 0 )); then
+  echo "Подсети отсутствуют."
 else
-  echo "${NETWORK_NAME}: уже отсутствует"
+  for ID in "${SUBNET_IDS[@]}"; do
+    echo "Удаляю подсеть ${ID}..."
+    if ! yc vpc subnet delete --id "$ID"; then
+      echo "Не удалось удалить подсеть ${ID}, продолжаю уборку." >&2
+    fi
+  done
 fi
 
-echo "=== Стенд ${PREFIX} удалён ==="
+echo "==> сети"
+mapfile -t NETWORK_IDS < <(
+  yc vpc network list --format json |
+    jq -r --arg p "$NAME_PREFIX" \
+      '.[] | select((.name // "") | startswith($p)) | .id'
+)
 
-echo "=== ВМ ==="
-yc compute instance list
+if (( ${#NETWORK_IDS[@]} == 0 )); then
+  echo "Сети отсутствуют."
+else
+  for ID in "${NETWORK_IDS[@]}"; do
+    echo "Удаляю сеть ${ID}..."
+    if ! yc vpc network delete --id "$ID"; then
+      echo "Не удалось удалить сеть ${ID}, продолжаю уборку." >&2
+    fi
+  done
+fi
 
-echo "=== ДИСКИ ==="
-yc compute disk list
+echo "=== Уборка завершена ==="
 
-echo "=== БАЛАНСИРОВЩИКИ ==="
-yc load-balancer network-load-balancer list
+echo "=== Оставшиеся ВМ с префиксом ${PREFIX} ==="
+yc compute instance list --format json |
+  jq -r --arg p "$NAME_PREFIX" \
+    '.[] | select((.name // "") | startswith($p)) | [.id, .name] | @tsv'
 
-echo "=== ЦЕЛЕВЫЕ ГРУППЫ ==="
-yc load-balancer target-group list
+echo "=== Оставшиеся диски с префиксом ${PREFIX} ==="
+yc compute disk list --format json |
+  jq -r --arg p "$NAME_PREFIX" \
+    '.[] | select((.name // "") | startswith($p)) | [.id, .name] | @tsv'
 
-echo "=== ПОДСЕТИ ==="
-yc vpc subnet list
-
-echo "=== СЕТИ ==="
-yc vpc network list
+echo "=== Оставшиеся сети с префиксом ${PREFIX} ==="
+yc vpc network list --format json |
+  jq -r --arg p "$NAME_PREFIX" \
+    '.[] | select((.name // "") | startswith($p)) | [.id, .name] | @tsv'
