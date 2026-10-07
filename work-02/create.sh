@@ -124,7 +124,7 @@ done
 echo "==> целевая группа"
 
 SUBNETS=("${SUBNET_A}" "${SUBNET_B}")
-TARGETS=""
+TARGETS=()
 
 for i in $(seq 1 "${VM_COUNT}"); do
   idx=$(( (i - 1) % 2 ))
@@ -133,12 +133,12 @@ for i in $(seq 1 "${VM_COUNT}"); do
     --format json \
     | jq -r '.network_interfaces[0].primary_v4_address.address')
 
-  TARGETS="${TARGETS} --target subnet-name=${SUBNETS[$idx]},address=${IP}"
+  TARGETS+=(--target "subnet-name=${SUBNETS[$idx]},address=${IP}")
 done
 
 yc load-balancer target-group create \
   --name "${PREFIX}-tg" \
-  ${TARGETS}
+  "${TARGETS[@]}"
 
 # ---- балансировщик ----
 echo "==> балансировщик"
