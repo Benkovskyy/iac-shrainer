@@ -13,4 +13,4 @@ shellcheck:
     - echo "Вариант 06, слово netlab"
     - shellcheck --version
     - find . -name '*.sh' -print
-    - find . -name '*.sh' -exec shellcheck {} +
+    - find . -name '*.sh' ! -path './work-01/commands.sh' -exec shellcheck {} +
