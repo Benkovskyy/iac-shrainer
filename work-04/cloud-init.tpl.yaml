@@ -16,3 +16,6 @@ runcmd:
   - bash -c 'echo "netlab on $(hostname)" > /var/www/html/index.nginx-debian.html'
   - nginx -t
   - systemctl restart nginx
+  - ufw allow 22/tcp
+  - ufw allow 8018/tcp
+  - ufw status verbose
