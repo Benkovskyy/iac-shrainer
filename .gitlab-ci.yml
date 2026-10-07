@@ -10,6 +10,12 @@ stages:
 shellcheck:
   stage: proverka
   image: koalaman/shellcheck-alpine:stable
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      changes:
+        - "**/*.sh"
+        - ".gitlab-ci.yml"
+    - when: never
   script:
     - echo "Вариант 06, слово netlab"
     - shellcheck --version
