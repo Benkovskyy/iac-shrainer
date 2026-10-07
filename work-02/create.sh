@@ -44,6 +44,9 @@ echo "DISK_SIZE=${DISK_SIZE}"
 SSH_KEY="$(cat "${SSH_KEY_FILE}")"
 export SSH_KEY APP_PORT GREETING
 
+# envsubst принимает имена переменных буквально: раскрывать их заранее нельзя.
+# Одинарные кавычки здесь используются намеренно.
+# shellcheck disable=SC2016
 envsubst '${SSH_KEY} ${APP_PORT} ${GREETING}' \
   < "${CLOUD_INIT_TEMPLATE}" \
   > "${CLOUD_INIT_FILE}"
