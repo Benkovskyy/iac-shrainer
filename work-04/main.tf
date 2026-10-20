@@ -18,6 +18,7 @@ data "yandex_compute_image" "base" {
 # ---------- машина ----------
 resource "yandex_compute_instance" "app" {
   name        = "shrainer-06-tf-app"
+  hostname    = "shrainer-06-tf-app"
   zone        = "ru-central1-d"
   platform_id = "standard-v3"
 
@@ -51,7 +52,8 @@ resource "yandex_compute_instance" "app" {
   }
 
   labels = {
-    env = "dev"
+    env   = "dev"
+    owner = "shrainer-06"
   }
 }
 
