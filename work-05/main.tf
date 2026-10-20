@@ -44,8 +44,9 @@ resource "yandex_compute_instance" "app" {
   }
 
   network_interface {
-    subnet_id = yandex_vpc_subnet.subnet.id
-    nat       = true
+    subnet_id          = yandex_vpc_subnet.subnet.id
+    nat                = true
+    security_group_ids = [yandex_vpc_security_group.web.id]
   }
 
   metadata = {

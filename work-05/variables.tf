@@ -55,3 +55,8 @@ variable "web_password" {
   type        = string
   sensitive   = true
 }
+
+variable "open_ports" {
+  description = "Список разрешённых входящих TCP-портов"
+  type        = list(number)
+}
