@@ -7,3 +7,5 @@ vm_count     = 3
 image_family = "ubuntu-2204-lts"
 greeting     = "netlab"
 env          = "dev"
+
+open_ports = [22, 8018]
