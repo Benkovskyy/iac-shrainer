@@ -1,0 +1,9 @@
+prefix       = "shrainer-06"
+zone         = "ru-central1-d"
+subnet_cidr  = "10.16.1.0/24"
+app_port     = 8018
+disk_size    = 25
+vm_count     = 3
+image_family = "ubuntu-2204-lts"
+greeting     = "netlab"
+env          = "dev"
